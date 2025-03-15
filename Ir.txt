@@ -1,0 +1,62 @@
+module reg_ir(
+    input clk,
+    input rst,
+    input IRWrite,
+    input [15:0] InstrIn,
+    output reg [3:0] Opcode,
+    output reg m,
+    output reg [2:0] Rd,
+    output reg [2:0] Rs1,
+    output reg [2:0] Rs2,
+    output reg [4:0] Imm,
+    output reg [11:0] Jump_Imm,
+    output reg [7:0] Imm2
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            Opcode <= 4'd0;
+            m <= 1'b0;
+            Rd <= 3'd0;
+            Rs1 <= 3'd0;
+            Rs2 <= 3'd0;
+            Imm <= 5'd0;
+            Jump_Imm <= 12'd0;
+            Imm2 <= 8'd0;
+        end else if (IRWrite) begin
+            Opcode <= InstrIn[15:12];
+            case (InstrIn[15:12])
+                4'b0000, 4'b0001, 4'b0010: begin // R-Type 
+                    Rd <= InstrIn[11:9];
+                    Rs1 <= InstrIn[8:6];
+                    Rs2 <= InstrIn[5:3];
+                end
+                4'b0011, 4'b0100, 4'b0101, 4'b0110, 4'b0111, 4'b1000, 4'b1001, 4'b1010, 4'b1011: begin // I-Type 
+                    m <= InstrIn[11]; 
+                    Rd <= InstrIn[10:8];
+                    Rs1 <= InstrIn[7:5];
+                    Imm <= InstrIn[4:0];
+                end
+                4'b1100, 4'b1101: begin // J-Type 
+                    Jump_Imm <= InstrIn[11:0];
+                end
+                4'b1110: begin // RET
+                    
+                end
+                4'b1111: begin // S-Type 
+                    Rs1 <= InstrIn[11:9];
+                    Imm2 <= InstrIn[7:0];
+                end
+                default: begin
+                    // Default case to handle undefined opcodes
+                    Rd <= 3'd0;
+                    Rs1 <= 3'd0;
+                    Rs2 <= 3'd0;
+                    Imm <= 5'd0;
+                    Jump_Imm <= 12'd0;
+                    Imm2 <= 8'd0;
+                end
+            endcase
+        end
+    end
+endmodule

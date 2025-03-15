@@ -1,0 +1,39 @@
+module reg_file (
+    input clk,
+    input RegWrite,
+    input [2:0] RA, 
+    input [2:0] RB, 
+    input [2:0] RW,
+    input [15:0] BusW,
+    output reg [15:0] BusA, 
+    output reg [15:0] BusB,
+    output reg [15:0] R7_out
+);
+
+    // Initialize registers to specific values
+    reg [15:0] regArray [0:7];
+
+    // Initial values for registers for testing purposes
+    initial begin
+        regArray[0] = 16'h0000; // R0 is zero
+        regArray[1] = 16'd1; 
+        regArray[2] = 16'h15DC;
+        regArray[3] = 16'h385A;
+        regArray[4] = 16'h1DC4;
+        regArray[5] = 16'h19EE;
+        regArray[6] = 16'h2738;
+        regArray[7] = 16'h0F5A;
+    end
+
+   
+
+    always @(posedge clk) begin	
+		BusA = regArray[RA];
+        BusB = regArray[RB];
+        R7_out = regArray[7];
+        if (RegWrite ) begin
+            regArray[RW] <= BusW;
+        end
+    end
+
+endmodule

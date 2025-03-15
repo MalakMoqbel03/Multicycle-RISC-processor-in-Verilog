@@ -1,0 +1,218 @@
+`include "Constant.v"
+module riscProcessorTopTest(
+    input clock,
+    input reset
+);	 
+
+    // Control Unit
+    wire [2:0] PCSrc;
+    wire [1:0] ALUOp, WB;
+    wire DstReg, RegSrc1, RegSrc2, ExtOp, ExtM, ENW, ALUSrc, Address_src, Data_src, MemR, MemW,ENreg,signENW;
+    wire IF_Stage, ID_Stage, E_Stage, Mem_Stage, WRB_Stage;
+    wire ZFlag, NFlag;
+    wire enable; // Added enable signal as a wire	
+	wire [15:0] memory [0:255];
+
+    // Instruction Memory
+    wire [15:0] PC, Instruction;
+
+    // Instruction Register Parts
+    wire [3:0] OpCode;
+    wire [3:0] Rs1, Rd, Rs2;
+    wire [4:0] Imm;
+    wire [7:0] Imm2;
+    wire [15:0] Jump_Imm;    
+    wire m;
+
+    // Register File
+    wire [3:0] RA, RB, RW;
+    wire [15:0] BusA, BusB, BusW;
+    wire [15:0] R7_out;
+
+    // ALU
+    wire [15:0] A, B, ALURes;
+
+    // Data Memory
+    wire [15:0] DataMemOut;
+
+    
+    // Immediate Extender
+    wire [15:0] extendedImm; 
+	 // Write Back
+    assign BusW = (WB == 2'b00) ? DataMemOut :
+                  (WB == 2'b01) ? ALURes :
+                  (WB == 2'b10) ? PC + 2 :
+                  2'b0;	
+				  
+				  
+				  
+   	ClockGenerator clockGenerator(clock);				  
+
+    // Control unit
+    controlUnit cu(
+      
+        .clock(clock),
+        .PCSrc(PCSrc),
+        .DstReg(DstReg),
+        .RegSrc1(RegSrc1),
+        .RegSrc2(RegSrc2),
+        .ExtOp(ExtOp),
+        .ExtM(ExtM),
+        .sigENW(ENW),
+        .ALUSrc(ALUSrc),
+        .ALUOp(ALUOp),
+        .Address_src(Address_src),
+        .Data_src(Data_src),
+        .sigMemR(MemR),
+        .sigMemW(MemW),
+        .WB(WB),
+        .IF_Stage(IF_Stage),
+        .ID_Stage(ID_Stage),
+        .E_Stage(E_Stage),
+        .Mem_Stage(Mem_Stage),
+        .WRB_Stage(WRB_Stage),
+        .ZFlag(ZFlag),
+        .NFlag(NFlag),
+        .OpCode(OpCode)
+    ); 
+	wire[15:0] NextPc;
+
+    assign NextPc = (PCSrc == 3'b000) ? (PC + 16'd2)  :
+                    (PCSrc == 3'b001) ? extendedImm :
+                    (PCSrc == 3'b010) ? Jump_Imm :
+                    R7_out;
+
+    // Program Counter (PC) module
+    reg_pc PCReg(
+        .clk(clock),
+        .rst(reset),
+        .NextPC(NextPc),  // Based on the control signals, the correct next PC should be selected
+        .PCWrite(IF_Stage),
+        .PC(PC)
+    );
+
+    // Instruction Memory
+    instructionMemory insMem(
+        .clock(clock),
+        .address(PC),
+        .instruction(Instruction)
+    );
+
+    // Instruction Register (IR)
+    reg_ir IR(
+        .clk(clock),
+        .rst(reset),
+        .IRWrite(ID_Stage),
+        .InstrIn(Instruction),
+        .Opcode(OpCode),
+        .m(m),  
+        .Rd(Rd),
+        .Rs1(Rs1),
+        .Rs2(Rs2),
+        .Imm(Imm), 
+        .Imm2(Imm2),
+        .Jump_Imm(Jump_Imm)
+    );
+
+    // Register File
+    reg_file regFile(
+	.clk(clock),  
+	.EN	(ENreg),
+	.EnW(signENW),
+        .RegWrite(ENW),
+        .RA(RA),
+        .RB(RB),
+        .RW(RW),
+        .BusW(BusW),
+        .BusA(BusA),
+        .BusB(BusB),
+        .R7_out(R7_out)
+    );
+	wire [15:0] WBoutput;
+    assign RA = (RegSrc1 == 1'b0) ? Rs1 : 4'b0000;
+    assign RB = (RegSrc2 == 1'b0) ? Rd : Rs2;
+    assign RW = (DstReg == 1'b0) ? Rs1 : Rd;
+	assign ENreg = (ID_Stage || WRB_Stage);
+    // ALU
+    ALU alu(
+        .fstOperand(BusA),
+        .SecOperand(B),
+        .EN(E_Stage),
+        .Zflag(ZFlag),
+        .Nflag(NFlag),
+        .ALUop(ALUOp),
+        .Output(ALURes)
+    );
+
+
+    // Data Memory
+    dataMemory dataMem(
+        .EN(Mem_Stage),
+        .dataOut(DataMemOut),
+        .clock(clock),
+        .memRead(MemR),
+        .memWrite(MemW),
+		.ALUresultt(ALURes),	
+		.regData2(BusA),   
+		.regData(BusB),
+		.Address_src(Address_src),		   
+		.Data_src(Data_src), 
+		.IMM(extendedImm)
+		
+    );
+
+    // Immediate Extender
+    Extender extender(
+        .Imm_in8(Imm2[7:0]),  // Corrected part-select to match 8-bit input
+        .Imm_in5(Imm[4:0]),
+        .ExtOp(ExtOp),
+        .ExtM(ExtM),
+        .Imm_out(extendedImm)
+    );
+
+    assign A = BusA;
+    assign B = (ALUSrc == 1'b1) ? extendedImm : BusB;
+
+   
+endmodule
+
+module tb_riscProcessorTest;
+    // Testbench variables
+    reg clk;
+    reg reset;
+
+    // Instantiate the processor module
+    riscProcessorTopTest uut (
+        .clock(clk),
+        .reset(reset)
+    );
+
+    // Clock generator
+    always #5 clk = ~clk;  // Toggle clock every 5 time units
+
+    // Initial block for setting up the testbench
+    initial begin
+        // Initialize testbench variables
+        clk = 0;
+        reset = 1;
+
+        // Display start message
+        $display("Starting testbench at time %0t", $time);
+
+        // Deassert reset after some time
+        #10 reset = 0;
+
+        // Run the simulation for a specified duration
+        #450 $finish;
+    end
+
+    // Monitor all the key signals in the processor
+   // initial begin
+      //  $monitor(
+//            "Time: %0t | PC: %h | NextPC: %h | PCWrite: %b | PCSrc: %b | Instruction: %h | OpCode: %h | Rs1: %h | Rs2: %h | Rd: %h | BusA: %h | BusB: %h | ALURes: %h | DataMemOut: %h | R7_out: %h | BusW: %h\nIF Stage: %b | ID Stage: %b | EX Stage: %b | MEM Stage: %b | WB Stage: %b\nControl Signals: ALUOp: %b | DstReg: %b | RegSrc1: %b | ExtOp: %b | ExtM: %b | ENW: %b | ALUSrc: %b | Address_src: %b | Data_src: %b | MemR: %b | MemW: %b | WB: %b\n",
+//            $time, uut.PCReg.PC, uut.NextPc, uut.PCReg.PCWrite, uut.cu.PCSrc, uut.insMem.instruction, uut.IR.Opcode, uut.IR.Rs1, uut.IR.Rs2, uut.IR.Rd, uut.regFile.BusA, uut.regFile.BusB, uut.alu.Output, uut.dataMem.dataOut, uut.regFile.R7_out, uut.regFile.BusW,
+//            uut.cu.IF_Stage, uut.cu.ID_Stage, uut.cu.E_Stage, uut.cu.Mem_Stage, uut.cu.WRB_Stage,
+//            uut.cu.ALUOp, uut.cu.DstReg, uut.cu.RegSrc1, uut.cu.ExtOp, uut.cu.ExtM, uut.cu.sigENW, uut.cu.ALUSrc, uut.cu.Address_src, uut.cu.Data_src, uut.cu.sigMemR, uut.cu.sigMemW, uut.cu.WB
+//        );
+   // end
+endmodule

@@ -1,0 +1,14 @@
+module ClockGenerator(
+    output reg clock
+);
+
+initial begin
+    clock = 0; // Initialize clock to LOW
+    $display("(%0t) > Initializing clock generator ...", $time);
+end
+
+always begin
+    #5 clock = ~clock; // Toggle clock every 5 time units
+end
+
+endmodule

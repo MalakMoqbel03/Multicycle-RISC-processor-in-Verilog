@@ -1,0 +1,167 @@
+
+module dataMemory(clock, ALUresultt, regData2 , regData , dataOut,  memWrite, memRead , EN,Address_src,Data_src,IMM);
+
+    input wire clock;
+    input wire memWrite,Address_src,Data_src;
+    input wire memRead, EN;
+
+    // Address bus
+    input wire [15:0] ALUresultt; 
+    input wire [15:0] regData;	
+	input wire [15:0] regData2;		   
+	input wire [15:0] IMM;
+
+
+    // Output of data memory
+    output reg [15:0] dataOut;
+
+
+     reg [15:0] memory [0:255];	
+	
+	reg [15:0] AddressBus, dataIn;
+	
+	always  @(memRead) begin  // Determine where to fetch address from		   
+		if (EN) begin
+            if (Address_src) begin
+                AddressBus <= regData2;	 
+            end
+                
+            else begin	
+                AddressBus <= ALUresultt;	 
+            end
+		end
+	end	 
+	
+	
+	always  @(memWrite&&memRead) begin  // Determine where to store data from
+		if (EN) begin
+            if (Data_src) begin
+                dataIn <= regData;	 
+            end
+			
+            else  begin	
+                dataIn <= IMM;	 
+            end
+		end
+	end	   
+
+    always  @(posedge clock) begin
+		if(EN) begin
+            if (memRead) begin
+                dataOut <= memory[AddressBus];
+            end else if (memWrite) begin
+                memory[AddressBus] <= dataIn;
+            end
+		end
+    end
+	
+    initial begin
+        // Store initial values in the memory for testing purposess
+        memory[0] = 32'd10;
+        memory[1] = 32'd5;
+		memory[40] = 32'd6;
+		memory[60] = 32'd5;
+		memory[223] = 32'd15; 
+    end	
+
+endmodule	
+module tb_dataMemory;
+    // Testbench variables
+    reg clock;
+    reg memWrite, memRead, EN, Address_src, Data_src;
+    reg [15:0] ALUresultt;
+    reg [15:0] regData;
+    reg [15:0] regData2;
+    reg [15:0] IMM;
+    wire [15:0] dataOut;
+
+    // Instantiate the dataMemory module
+    dataMemory uut (
+        .clock(clock),
+        .ALUresultt(ALUresultt),
+        .regData2(regData2),
+        .regData(regData),
+        .dataOut(dataOut),
+        .memWrite(memWrite),
+        .memRead(memRead),
+        .EN(EN),
+        .Address_src(Address_src),
+        .Data_src(Data_src),
+        .IMM(IMM)
+    );
+
+    // Clock generator
+    always #5 clock = ~clock;  // Toggle clock every 5 time units
+
+    // Initial block for setting up the testbench
+    initial begin
+        // Initialize testbench variables
+        clock = 0;
+        memWrite = 0;
+        memRead = 0;
+        EN = 0;
+        Address_src = 0;
+        Data_src = 0;
+        ALUresultt = 0;
+        regData = 0;
+        regData2 = 0;
+        IMM = 0;
+
+        // Display start message
+        $display("Starting testbench at time %0t", $time);
+
+        // Write to memory
+        #10;
+        EN = 1;
+        memWrite = 1;
+        memRead = 0;
+        Address_src = 0;
+        Data_src = 0;
+        ALUresultt = 16'h0020;
+        regData = 16'h1234;
+        IMM = 16'h5678;
+        #10;
+        memWrite = 0;
+
+        // Read from memory
+        #10;
+        memRead = 1;
+        #10;
+        memRead = 0;
+
+        // Write to memory using Address_src and Data_src
+        #10;
+        memWrite = 1;
+        Address_src = 1;
+        Data_src = 1;
+        regData2 = 16'h0040;
+        regData = 16'h5678;
+        #10;
+        memWrite = 0;
+
+        // Read from memory using Address_src
+        #10;
+        memRead = 1;
+        Address_src = 1;
+        regData2 = 16'h0040;
+        #10;
+        memRead = 0;
+
+        // Disable enable signal
+        #10;
+        EN = 0;
+
+        // Display end message and finish simulation
+        #50;
+        $display("Ending testbench at time %0t", $time);
+        $finish;
+    end
+
+    // Monitor all the key signals in the memory module
+    initial begin
+        $monitor(
+            "Time: %0t | clock: %b | memWrite: %b | memRead: %b | EN: %b | Address_src: %b | Data_src: %b | ALUresultt: %h | regData: %h | regData2: %h | IMM: %h | dataOut: %h\n",
+            $time, clock, memWrite, memRead, EN, Address_src, Data_src, ALUresultt, regData, regData2, IMM, dataOut
+        );
+    end
+endmodule

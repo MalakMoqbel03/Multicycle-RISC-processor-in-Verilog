@@ -1,0 +1,46 @@
+module ALU (
+    fstOperand,
+    SecOperand,
+    EN,
+    Zflag,
+    Nflag,
+    ALUop,
+    Output
+);
+
+parameter LOW = 1'b0;
+parameter HIGH = 1'b1;
+parameter ALU_AND = 2'b00;
+parameter ALU_ADD = 2'b01;
+parameter ALU_SUB = 2'b10;
+parameter ALU_RVSUB = 2'b11;
+
+input wire [1:0] ALUop;
+input wire [15:0] fstOperand, SecOperand;
+input wire EN;
+
+output reg [15:0] Output;
+output reg Zflag;
+output reg Nflag;
+
+initial begin
+    if (EN == LOW) begin
+        Output = 16'd0;
+    end
+end
+
+always @(posedge EN) begin
+    #1 // To wait for ALU source mux to select operands
+    case (ALUop)
+        ALU_AND: Output <= fstOperand & SecOperand;
+        ALU_ADD: Output <= fstOperand + SecOperand;
+        ALU_SUB: Output <= fstOperand - SecOperand;
+        ALU_RVSUB: Output <= SecOperand - fstOperand;
+        default: Output <= 16'd0;
+    endcase
+
+    Zflag <= (Output == 16'd0);
+    Nflag <= (Output[15] == 1); // if 2s complement number is negative, MSB is 1
+end
+
+endmodule

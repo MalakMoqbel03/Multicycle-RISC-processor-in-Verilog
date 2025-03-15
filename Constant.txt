@@ -1,0 +1,53 @@
+// PC Source selection
+parameter [2:0] pcDefault = 3'b000;
+parameter [2:0] pcSgnImm = 3'b001;
+parameter [2:0] pcImm = 3'b010;
+parameter [2:0] R7PC = 3'b011;
+parameter [2:0] R0 = 3'b000;
+// ALU Operations
+parameter [1:0] ALU_ADD = 2'b00;
+parameter [1:0] ALU_SUB = 2'b01;
+parameter [1:0] ALU_AND = 2'b10;
+
+// Write Back Selection
+parameter [1:0] WB_Default = 2'b00;
+parameter [1:0] WB_One = 2'b01;
+parameter [1:0] WB_Two = 2'b10;
+
+// Enable and Disable Signals
+parameter LOW = 1'b0;
+parameter HIGH = 1'b1;
+
+// Register selection for specific operations
+parameter [2:0] R7 = 3'b111;
+parameter [3:0] AND = 4'b0000,
+ADD = 4'b0001,
+SUB = 4'b0010,
+ADDI = 4'b0011,
+ANDI = 4'b0100,
+LW = 4'b0101,
+LBu = 4'b0110,
+LBs = 4'b0110,
+SW = 4'b0111,
+BGT = 4'b1000,
+BGTZ = 4'b1000,
+BLT = 4'b1001,
+BLTZ = 4'b1001,
+BEQ = 4'b1010,
+BEQZ = 4'b1010,
+BNE = 4'b1011,
+BNEZ = 4'b1011,
+JMP = 4'b1100,
+CALL = 4'b1101,
+RET = 4'b1110,
+Sv = 4'b1111;
+
+// Extender Operations
+parameter [1:0] Zero = 2'b00;
+parameter [1:0] One = 2'b01;
+parameter [1:0] Two = 2'b10;
+parameter [1:0] Three= 2'b11;
+
+// Mode Bits for I-Type Instructions
+parameter MODE_ZERO_EXT = 1'b0;
+parameter MODE_SIGN_EXT = 1'b1;
